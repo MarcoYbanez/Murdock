@@ -1,0 +1,6 @@
+%YAML:1.0
+    translationOfCamera2: !!opencv-matrix
+        rows: 1
+        cols: 3
+        dt: f
+        data: [ -73.076986, -0.037453, 1.183290]
