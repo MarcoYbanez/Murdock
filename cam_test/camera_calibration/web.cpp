@@ -28,23 +28,32 @@ using namespace cv;
 #if DISPARITY
 // Defining callback functions for the trackbars to update parameter values
 
+//https://learnopencv.com/depth-perception-using-stereo-camera-python-c/
+
+  //cv::Ptr<cv::StereoSGBM> stereo = cv::StereoSGBM::create();
   cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
-  int numDisparities = 64;
-  int blockSize = 5;
+  int numDisparities = 1;
+  int blockSize = 4;
   int preFilterType = 1;
   int preFilterSize = 1;
   int preFilterCap = 31;
-  int minDisparity = -10;
-  int textureThreshold = 507;
-  int uniquenessRatio = 15;
+  int minDisparity = 1;
+  int textureThreshold = 10;
+  int uniquenessRatio = 30;
   int speckleRange = 0;
   int speckleWindowSize = 0;
-  int disp12MaxDiff = -1;
+  int disp12MaxDiff = 1;
   int dispType = CV_16S;
+  
+  int P1 = 0;
+  int P2 = 0;
 static void on_trackbar1( int, void* )
 {
   stereo->setNumDisparities(numDisparities*16);
   numDisparities = numDisparities*16;
+  if(numDisparities == 0){
+    numDisparities = 1;
+  }
 }
 
 static void on_trackbar2( int, void* )
@@ -52,6 +61,18 @@ static void on_trackbar2( int, void* )
   stereo->setBlockSize(blockSize*2+5);
   blockSize = blockSize*2+5;
 }
+
+/*
+static void on_trackbarP2( int, void* )
+{
+  stereo->setP2(P2);
+}
+
+static void on_trackbarP1( int, void* )
+{
+  stereo->setP1(P1);
+}
+*/
 
 static void on_trackbar3( int, void* )
 {
@@ -104,12 +125,12 @@ static void on_trackbar11( int, void* )
 
 int main(){
 
-  cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters/distortionCoefficients1.yaml", "distortionCoefficients1");
-  cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters/distortionCoefficients2.yaml", "distortionCoefficients2");
-  cv::Mat intrinsicMat1= LoadDatafromymlfile("parameters/intrinsicMatrix1.yaml", "intrinsicMatrix1");
-  cv::Mat intrinsicMat2= LoadDatafromymlfile("parameters/intrinsicMatrix2.yaml", "intrinsicMatrix2");
-  cv::Mat rot_cam2 = LoadDatafromymlfile("parameters/rotationOfCamera2.yaml", "rotationOfCamera2");
-  cv::Mat translation_cam2 = LoadDatafromymlfile("parameters/translationOfCamera2.yaml", "translationOfCamera2");
+  cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters_v2/distortionCoefficients1.yaml", "distortionCoefficients1");
+  cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters_v2/distortionCoefficients2.yaml", "distortionCoefficients2");
+  cv::Mat intrinsicMat1= LoadDatafromymlfile("parameters_v2/intrinsicMatrix1.yaml", "intrinsicMatrix1");
+  cv::Mat intrinsicMat2= LoadDatafromymlfile("parameters_v2/intrinsicMatrix2.yaml", "intrinsicMatrix2");
+  cv::Mat rot_cam2 = LoadDatafromymlfile("parameters_v2/rotationOfCamera2.yaml", "rotationOfCamera2");
+  cv::Mat translation_cam2 = LoadDatafromymlfile("parameters_v2/translationOfCamera2.yaml", "translationOfCamera2");
 #if MINE
   
   /*
@@ -323,6 +344,8 @@ int main(){
   cv::createTrackbar("speckleWindowSize", "disparity", &speckleWindowSize, 25, on_trackbar9);
   cv::createTrackbar("disp12MaxDiff", "disparity", &disp12MaxDiff, 25, on_trackbar10);
   cv::createTrackbar("minDisparity", "disparity", &minDisparity, 25, on_trackbar11);
+  //cv::createTrackbar("P1", "disparity", &P1, 1000, on_trackbar3);
+  //cv::createTrackbar("P2", "disparity", &P2, 1000, on_trackbar3);
 
   cv::Mat disp, disparity, g1, g2;
 
@@ -375,9 +398,6 @@ int main(){
 
 #endif
 
-
-
-
     //imshow("Camera 1",Left_nice);
     //imshow("Camera 2", Right_nice);
     if (waitKey(5) >= 0)
@@ -387,23 +407,9 @@ int main(){
 
 
 #endif
-  //cv::imshow("left",frameL);
-  //cv::imshow("right",frameR);
-/*
-  cv::FileStorage cv_file = cv::FileStorage("improved_params2_cpp.xml", cv::FileStorage::WRITE);
-  cv_file.write("Left_Stereo_Map_x",Left_Stereo_Map1);
-  cv_file.write("Left_Stereo_Map_y",Left_Stereo_Map2);
-  cv_file.write("Right_Stereo_Map_x",Right_Stereo_Map1);
-  cv_file.write("Right_Stereo_Map_y",Right_Stereo_Map2);
-
-  cv::imshow("Left image before rectification",frameL);
-  cv::imshow("Right image before rectification",frameR);
-  cv::Mat Left_nice, Right_nice;
-*/
-  // Apply the calculated maps for rectification and undistortion 
 #else
   // Defining the dimensions of checkerboard
-  int CHECKERBOARD[2]{6,9}; 
+  int CHECKERBOARD[2]{7,9}; 
 
   // Creating vector to store vectors of 3D points for each checkerboard image
   std::vector<std::vector<cv::Point3f> > objpoints;
@@ -422,8 +428,12 @@ int main(){
   // Extracting path of individual image stored in a given directory
   std::vector<cv::String> imagesL, imagesR;
   // Path of the folder containing checkerboard images
-  std::string pathL = "./images/L/*.jpg";
-  std::string pathR = "./images/R/*.jpg";
+  cerr << "CRASH\n";
+  //std::string pathL = "./images/snap_shot/L/*.jpg";
+  //std::string pathR = "./images/snap_shot/R/*.jpg";
+  //std::string pathL = "./images/L/*.jpg";
+  //std::string pathR = "./images/R/*.jpg";
+  cerr << "CRASH\n";
 
   cv::glob(pathL, imagesL);
   cv::glob(pathR, imagesR);
@@ -477,15 +487,15 @@ int main(){
       imgpointsR.push_back(corner_ptsR);
     }
 
-    //cv::imshow("ImageL",frameL);
-    //cv::imshow("ImageR",frameR);
-    //cv::waitKey(0);
+    cv::imshow("ImageL",frameL);
+    cv::imshow("ImageR",frameR);
+    cv::waitKey(0);
   }
 
   //frameL = cv::imread("~/sample.jpeg");
   //frameR = cv::imread("~/sample1.jpeg");
-  //frameL = cv::imread("snap_shot/L/img1.jpg");
-  //frameR = cv::imread("snap_shot/R/img1.jpg");
+  frameL = cv::imread("snap_shot/L/img1.jpg");
+  frameR = cv::imread("snap_shot/R/img1.jpg");
 
 
   cv::destroyAllWindows();

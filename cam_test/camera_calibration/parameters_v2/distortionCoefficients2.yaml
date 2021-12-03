@@ -1,0 +1,7 @@
+%YAML:1.0
+    distortionCoefficients2: !!opencv-matrix
+        rows: 1
+        cols: 5
+        dt: f
+        data: [ 0.156082, -0.928489, 0.000000, 
+            0.000000, 0.000000]
