@@ -8,23 +8,31 @@
 #include <stdio.h>
 #include <iostream>
 #include "opencv2/imgcodecs.hpp"
+#include "opencv2/objdetect.hpp"
+#include "opencv2/videoio.hpp"
 
-
-
-cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
-
-#define MINE 1
-#define LIVE_FEED 1
-#define DISPARITY 1
-
-
-#define LIVE_FEED_OTHER 0
-#define DISPARITY_OTHER 0
+#include <opencv2/cudaobjdetect.hpp>
+#include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/core/cuda.hpp>
 
 
 using namespace std;
 using namespace cv;
 
+cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
+void detectAndDisplay( Mat frame );
+
+#define MINE 1
+#define LIVE_FEED 1
+#define DISPARITY 0
+#define OBJECT_DETECTION 1
+ 
+#define LIVE_FEED_OTHER 0
+#define DISPARITY_OTHER 0
+
+
+Ptr<cuda::CascadeClassifier> body_cascade;
 #if DISPARITY
 // Defining callback functions for the trackbars to update parameter values
 
@@ -142,6 +150,23 @@ int main(){
   std::cout << translation_cam2 << std::endl;
 
   */
+
+#if OBJECT_DETECTION
+
+  cuda::GpuMat left_frame_gpu, left_gray_gpu, left_facesBuf_gpu;
+  cuda::GpuMat right_frame_gpu, right_gray_gpu, right_facesBuf_gpu;
+  //body_cascade = cuda::CascadeClassifier::create("./haarcascade_fullbody.xml");
+  body_cascade = cuda::CascadeClassifier::create("./haarcascade_frontalface_alt.xml");
+  if(body_cascade->empty()){
+    cerr << "DID NOT LOAD\n";
+  }
+  else{
+    cerr << "LOADED\n";
+  }
+  std::vector<Rect> right_faces, left_faces;
+
+#endif
+
   cv::Mat frameR = cv::imread("./images/R/img10.jpg");
   cv::Mat frameL = cv::imread("./images/L/img10.jpg");
   
@@ -193,6 +218,8 @@ int main(){
    //alpha could be 0 or 1 read docs
 
 
+  cerr << proj_mat_l << endl;
+  cerr << proj_mat_r << endl;
   cv::Mat Left_Stereo_Map1, Left_Stereo_Map2, Right_Stereo_Map1, Right_Stereo_Map2;
 
   cv::initUndistortRectifyMap(in1,
@@ -214,7 +241,6 @@ int main(){
                               Right_Stereo_Map2);
 
   cv::Mat Left_nice, Right_nice;
-  std::cerr << "asdfasdfasfdasdfasdfasfd\n";
   cv::remap(frameL,
             Left_nice,
             Left_Stereo_Map1,
@@ -366,10 +392,10 @@ int main(){
     }
     // show live and wait for a key with timeout long enough to show images
 
-    cvtColor(frame1, g1, CV_BGR2GRAY);
-    cvtColor(frame2, g2, CV_BGR2GRAY);
+    //cvtColor(frame1, g1, CV_BGR2GRAY);
+    //cvtColor(frame2, g2, CV_BGR2GRAY);
 
-    cv::remap(g1,
+    cv::remap(frame1,
               Left_nice,
               Left_Stereo_Map1,
               Left_Stereo_Map2,
@@ -377,19 +403,17 @@ int main(){
               cv::BORDER_CONSTANT,
               0);
 
-    cv::remap(g2,
+    cv::remap(frame2,
               Right_nice,
               Right_Stereo_Map1,
               Right_Stereo_Map2,
               cv::INTER_LANCZOS4,
               cv::BORDER_CONSTANT,
               0);
-    imshow("Camera 1",  Left_nice);
-    imshow("Camera 2",Right_nice);
 
 #if DISPARITY
 
-    stereo->compute(Left_nice, Right_nice, disp);
+    Stereo->compute(Left_nice, Right_nice, disp);
     disp.convertTo(disparity, CV_32F, 1.0);
     disparity = (disparity/16.0f-(float)minDisparity/(float)numDisparities);
   
@@ -397,9 +421,53 @@ int main(){
   imshow("Disparity", disparity);
 
 #endif
+#if OBJECT_DETECTION
 
-    //imshow("Camera 1",Left_nice);
-    //imshow("Camera 2", Right_nice);
+  //detectAndDisplay(Left_nice);
+  //detectAndDisplay(Right_nice);
+
+    left_frame_gpu.upload(Left_nice);
+    //right_frame_gpu.upload(Right_nice);
+
+    cv::cuda::cvtColor(left_frame_gpu, left_gray_gpu, COLOR_BGR2GRAY);
+    //cv::cuda::cvtColor(right_frame_gpu, right_gray_gpu, COLOR_BGR2GRAY);
+
+    body_cascade->setFindLargestObject(false);
+    body_cascade->setScaleFactor(1.2);
+    body_cascade->setMinNeighbors(4);
+    body_cascade->detectMultiScale(left_gray_gpu, left_facesBuf_gpu);
+    //body_cascade->detectMultiScale(right_gray_gpu, right_facesBuf_gpu);
+    body_cascade->convert(left_facesBuf_gpu, left_faces);
+    //body_cascade->convert(right_facesBuf_gpu, right_faces);
+    //cout << left_faces << endl;
+
+    for ( size_t i = 0; i < left_faces.size(); i++ )
+    {
+      //Point center( left_faces[i].x + left_faces[i].width/2, left_faces[i].y + left_faces[i].height/2 );
+      //Point zero( left_faces[i].x+ left_faces[i].width /2, left_faces[i].y );
+      Point zero( left_faces[i].x+ left_faces[i].width, left_faces[i].y );
+      Point max( left_faces[i].x + left_faces[i].width, left_faces[i].y + left_faces[i].height );
+
+      Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
+      //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
+
+
+      //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
+      rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
+    }
+    //Point center_top(left_faces[left_faces.size()/2].x, 0);
+    //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
+
+    /*for ( size_t i = 0; i < right_faces.size(); i++ )
+    {
+      Point center( right_faces[i].x + right_faces[i].width/2, right_faces[i].y + right_faces[i].height/2 );
+      ellipse( Right_nice, center, Size( right_faces[i].width/2, right_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
+    }*/
+
+#endif
+
+    imshow("Camera 1",Left_nice);
+    imshow("Camera 2", Right_nice);
     if (waitKey(5) >= 0)
       break;
   }
@@ -897,3 +965,40 @@ cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring
     fs.release();
     return temp;
 }
+
+/** @function detectAndDisplay */
+
+/*
+void detectAndDisplay( Mat frame )
+{
+    Mat frame_gray;
+    cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
+    equalizeHist( frame_gray, frame_gray );
+
+    //-- Detect faces
+    std::vector<Rect> right_faces;
+    std::vector<Rect> left_faces;
+    //face_cascade.detectMultiScale( frame_gray, faces );
+
+    for ( size_t i = 0; i < faces.size(); i++ )
+    {
+        Point center( faces[i].x + faces[i].width/2, faces[i].y + faces[i].height/2 );
+        ellipse( frame, center, Size( faces[i].width/2, faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
+
+        Mat faceROI = frame_gray( faces[i] );
+
+        //-- In each face, detect eyes
+        std::vector<Rect> eyes;
+        eyes_cascade.detectMultiScale( faceROI, eyes );
+
+        for ( size_t j = 0; j < eyes.size(); j++ )
+        {
+            Point eye_center( faces[i].x + eyes[j].x + eyes[j].width/2, faces[i].y + eyes[j].y + eyes[j].height/2 );
+            int radius = cvRound( (eyes[j].width + eyes[j].height)*0.25 );
+            circle( frame, eye_center, radius, Scalar( 255, 0, 0 ), 4 );
+        }
+    }
+
+    //-- Show what you got
+    imshow( "Capture - Face detection", frame );
+}*/
