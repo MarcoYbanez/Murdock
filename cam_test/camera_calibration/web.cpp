@@ -27,6 +27,7 @@ void detectAndDisplay( Mat frame );
 #define LIVE_FEED 1
 #define DISPARITY 0
 #define OBJECT_DETECTION 1
+#define OB_DEPTH 1
  
 #define LIVE_FEED_OTHER 0
 #define DISPARITY_OTHER 0
@@ -220,6 +221,7 @@ int main(){
 
   cerr << proj_mat_l << endl;
   cerr << proj_mat_r << endl;
+  cerr << proj_mat_r.at<double>(0,3) << endl;
   cv::Mat Left_Stereo_Map1, Left_Stereo_Map2, Right_Stereo_Map1, Right_Stereo_Map2;
 
   cv::initUndistortRectifyMap(in1,
@@ -425,44 +427,65 @@ int main(){
 
   //detectAndDisplay(Left_nice);
   //detectAndDisplay(Right_nice);
-
+    Q.convertTo(Q, CV_32F);
+    
     left_frame_gpu.upload(Left_nice);
-    //right_frame_gpu.upload(Right_nice);
+    right_frame_gpu.upload(Right_nice);
 
     cv::cuda::cvtColor(left_frame_gpu, left_gray_gpu, COLOR_BGR2GRAY);
-    //cv::cuda::cvtColor(right_frame_gpu, right_gray_gpu, COLOR_BGR2GRAY);
+    cv::cuda::cvtColor(right_frame_gpu, right_gray_gpu, COLOR_BGR2GRAY);
 
     body_cascade->setFindLargestObject(false);
     body_cascade->setScaleFactor(1.2);
     body_cascade->setMinNeighbors(4);
     body_cascade->detectMultiScale(left_gray_gpu, left_facesBuf_gpu);
-    //body_cascade->detectMultiScale(right_gray_gpu, right_facesBuf_gpu);
+    body_cascade->detectMultiScale(right_gray_gpu, right_facesBuf_gpu);
     body_cascade->convert(left_facesBuf_gpu, left_faces);
-    //body_cascade->convert(right_facesBuf_gpu, right_faces);
+    body_cascade->convert(right_facesBuf_gpu, right_faces);
     //cout << left_faces << endl;
-
+  
+    double focal_length = proj_mat_l.at<double>(0,0) * (double)3.58 / 320;
+    focal_length = focal_length / 10;
+    double B = 0.06985;
+    //double B = abs(proj_mat_r.at<double>(0,3));
+    double disp2 = ((proj_mat_l.at<double>(0,2)) + proj_mat_r.at<double>(0,2));
+ 
     for ( size_t i = 0; i < left_faces.size(); i++ )
     {
-      //Point center( left_faces[i].x + left_faces[i].width/2, left_faces[i].y + left_faces[i].height/2 );
+      Point center( left_faces[i].x + left_faces[i].width/2, left_faces[i].y + left_faces[i].height/2 );
       //Point zero( left_faces[i].x+ left_faces[i].width /2, left_faces[i].y );
-      Point zero( left_faces[i].x+ left_faces[i].width, left_faces[i].y );
+      Point zero( left_faces[i].x, left_faces[i].y );
       Point max( left_faces[i].x + left_faces[i].width, left_faces[i].y + left_faces[i].height );
 
-      Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
+      cerr << left_faces[i].x+left_faces[i].width/2 << "     " << right_faces[i].x+ right_faces[i].width/2 << endl;
+      //cerr << proj_mat_l.at<float>(0,0) << endl;
+
+      //Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
       //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
 
 
       //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
       rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
-    }
-    //Point center_top(left_faces[left_faces.size()/2].x, 0);
-    //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
 
-    /*for ( size_t i = 0; i < right_faces.size(); i++ )
-    {
-      Point center( right_faces[i].x + right_faces[i].width/2, right_faces[i].y + right_faces[i].height/2 );
-      ellipse( Right_nice, center, Size( right_faces[i].width/2, right_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
-    }*/
+      Point maxR( right_faces[i].x +right_faces[i].width, right_faces[i].y + right_faces[i].height );
+      Point zeroR( right_faces[i].x, right_faces[i].y );
+
+      //Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
+      //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
+
+
+      //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
+      rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
+      rectangle(Right_nice, zeroR, maxR, Scalar( 255, 128, 0 ) ,2);
+
+      double disp = (left_faces[i].x+left_faces[i].width/2)-(right_faces[i].x+ right_faces[i].width/2);
+      double depth = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
+      string depth_str = "Distance: " + to_string(depth);
+
+      //putText(Left_nice, depth_str, center, 1, 2, Scalar(255, 128, 0), 2, 2 );
+
+      cerr << "DEPTH: " << abs(depth) <<endl;
+    }
 
 #endif
 
