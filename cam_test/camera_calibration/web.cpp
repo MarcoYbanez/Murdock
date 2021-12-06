@@ -11,6 +11,8 @@
 #include "opencv2/objdetect.hpp"
 #include "opencv2/videoio.hpp"
 #include <unistd.h>
+#include <fstream>
+
 
 #include <opencv2/cudaobjdetect.hpp>
 #include <opencv2/cudaimgproc.hpp>
@@ -21,8 +23,6 @@
 using namespace std;
 using namespace cv;
 
-cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
-void detectAndDisplay( Mat frame );
 
 #define MINE 1
 #define LIVE_FEED 1
@@ -35,6 +35,12 @@ void detectAndDisplay( Mat frame );
 
 
 Ptr<cuda::CascadeClassifier> body_cascade;
+cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
+void detectAndDisplay( Mat frame );
+
+void create_shared_results_file();
+std::vector<int> violations(24,0);
+
 int main(){
 
   cv::Mat distortCoeff1 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients1.yaml", "distortionCoefficients1");
@@ -43,6 +49,7 @@ int main(){
   cv::Mat intrinsicMat2= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix2.yaml", "intrinsicMatrix2");
   cv::Mat rot_cam2 = LoadDatafromymlfile("stereo_calib_parameters/rotationOfCamera2.yaml", "rotationOfCamera2");
   cv::Mat translation_cam2 = LoadDatafromymlfile("stereo_calib_parameters/translationOfCamera2.yaml", "translationOfCamera2");
+  create_shared_results_file();
 #if MINE
   
 #if OBJECT_DETECTION
@@ -336,6 +343,25 @@ cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring
     fs[varriablestring] >> temp;
     fs.release();
     return temp;
+}
+
+
+void create_shared_results_file(){
+
+  std::ofstream file("violations.csv", std::ios::trunc);
+  
+  //for(auto i = new_set_violations.begin(); i != new_set_violations.end(); ++i){
+  for(int i = 0; i < (int)violations.size(); ++i){
+    int begin_hr = i;
+    int end_hr = i+1;
+    if(i == 23){
+      end_hr = 0;
+    }
+    file << i << ", " << i+1 << ", " << violations[i] << std::endl;
+
+  }
+
+  file.close();
 }
 
 /** @function detectAndDisplay */
