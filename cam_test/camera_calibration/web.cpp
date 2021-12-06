@@ -10,6 +10,7 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/videoio.hpp"
+#include <unistd.h>
 
 #include <opencv2/cudaobjdetect.hpp>
 #include <opencv2/cudaimgproc.hpp>
@@ -420,7 +421,7 @@ int main(){
     disparity = (disparity/16.0f-(float)minDisparity/(float)numDisparities);
   
 
-  imshow("Disparity", disparity);
+    imshow("Disparity", disparity);
 
 #endif
 #if OBJECT_DETECTION
@@ -446,10 +447,12 @@ int main(){
   
     double focal_length = proj_mat_l.at<double>(0,0) * (double)3.58 / 320;
     focal_length = focal_length / 10;
-    double B = 0.06985;
+    double B = 0.06985; //2.75 in to mm
     //double B = abs(proj_mat_r.at<double>(0,3));
     double disp2 = ((proj_mat_l.at<double>(0,2)) + proj_mat_r.at<double>(0,2));
  
+
+
     for ( size_t i = 0; i < left_faces.size(); i++ )
     {
       Point center( left_faces[i].x + left_faces[i].width/2, left_faces[i].y + left_faces[i].height/2 );
@@ -457,7 +460,7 @@ int main(){
       Point zero( left_faces[i].x, left_faces[i].y );
       Point max( left_faces[i].x + left_faces[i].width, left_faces[i].y + left_faces[i].height );
 
-      cerr << left_faces[i].x+left_faces[i].width/2 << "     " << right_faces[i].x+ right_faces[i].width/2 << endl;
+      //cerr << left_faces[i].x+left_faces[i].width/2 << "     " << right_faces[i].x+ right_faces[i].width/2 << endl;
       //cerr << proj_mat_l.at<float>(0,0) << endl;
 
       //Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
@@ -465,26 +468,24 @@ int main(){
 
 
       //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
+      //rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
+
       rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
 
-      Point maxR( right_faces[i].x +right_faces[i].width, right_faces[i].y + right_faces[i].height );
-      Point zeroR( right_faces[i].x, right_faces[i].y );
+      if(right_faces.size() != 0){
+        
+        Point maxR( right_faces[i].x +right_faces[i].width, right_faces[i].y + right_faces[i].height );
+        Point zeroR( right_faces[i].x, right_faces[i].y );
+        rectangle(Right_nice, zeroR, maxR, Scalar( 255, 128, 0 ) ,2);
 
-      //Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
-      //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
+        double disp = (left_faces[i].x+left_faces[i].width/2)-(right_faces[i].x+ right_faces[i].width/2);
+        double depth = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
+        string depth_str = "Distance: " + to_string(depth);
 
+        //cerr << "DEPTH: " << abs(depth) <<endl;
+        //sleep(.2);
+      }
 
-      //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
-      rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
-      rectangle(Right_nice, zeroR, maxR, Scalar( 255, 128, 0 ) ,2);
-
-      double disp = (left_faces[i].x+left_faces[i].width/2)-(right_faces[i].x+ right_faces[i].width/2);
-      double depth = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
-      string depth_str = "Distance: " + to_string(depth);
-
-      //putText(Left_nice, depth_str, center, 1, 2, Scalar(255, 128, 0), 2, 2 );
-
-      cerr << "DEPTH: " << abs(depth) <<endl;
     }
 
 #endif
