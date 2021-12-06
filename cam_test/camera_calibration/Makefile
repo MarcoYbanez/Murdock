@@ -12,25 +12,14 @@ CFILES=
 
 SRCS= ${HFILES} ${CFILES}
 
-all: calibrate temp web
+all: web
 
 clean:
 	-rm -f *.o *.d
-	-rm temp 
-	-rm calibrate
 	-rm web 
 
 distclean:
 	-rm -f *.o *.d
-
-#disparity_map: disparity_map.o
-#	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)
-
-temp: temp.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)
-
-calibrate: calibrate.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)
 
 web: web.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)

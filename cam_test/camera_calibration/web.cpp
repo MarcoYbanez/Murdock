@@ -37,12 +37,12 @@ void detectAndDisplay( Mat frame );
 Ptr<cuda::CascadeClassifier> body_cascade;
 int main(){
 
-  cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters_v2/distortionCoefficients1.yaml", "distortionCoefficients1");
-  cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters_v2/distortionCoefficients2.yaml", "distortionCoefficients2");
-  cv::Mat intrinsicMat1= LoadDatafromymlfile("parameters_v2/intrinsicMatrix1.yaml", "intrinsicMatrix1");
-  cv::Mat intrinsicMat2= LoadDatafromymlfile("parameters_v2/intrinsicMatrix2.yaml", "intrinsicMatrix2");
-  cv::Mat rot_cam2 = LoadDatafromymlfile("parameters_v2/rotationOfCamera2.yaml", "rotationOfCamera2");
-  cv::Mat translation_cam2 = LoadDatafromymlfile("parameters_v2/translationOfCamera2.yaml", "translationOfCamera2");
+  cv::Mat distortCoeff1 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients1.yaml", "distortionCoefficients1");
+  cv::Mat distortCoeff2 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients2.yaml", "distortionCoefficients2");
+  cv::Mat intrinsicMat1= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix1.yaml", "intrinsicMatrix1");
+  cv::Mat intrinsicMat2= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix2.yaml", "intrinsicMatrix2");
+  cv::Mat rot_cam2 = LoadDatafromymlfile("stereo_calib_parameters/rotationOfCamera2.yaml", "rotationOfCamera2");
+  cv::Mat translation_cam2 = LoadDatafromymlfile("stereo_calib_parameters/translationOfCamera2.yaml", "translationOfCamera2");
 #if MINE
   
 #if OBJECT_DETECTION
