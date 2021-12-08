@@ -1,11 +1,11 @@
-INCLUDE_DIRS =  -I/usr/local/include/opencv4
+INCLUDE_DIRS =  -I/usr/local/include/opencv4 -lpthread
 #INCLUDE_DIRS =  -I/usr/include/opencv4
 LIB_DIRS = 
-export CC=g++ $(pkg-config --cflags --libs opencv4)
+export CC=g++   $(pkg-config --cflags --libs opencv4)
 CDEFS=
 CFLAGS= -O0 -g $(INCLUDE_DIRS) $(CDEFS)
 LIBS= -lrt
-CPPLIBS= -L/usr/local/lib/ -lopencv_core -lopencv_flann -lopencv_video -lopencv_highgui -lopencv_ccalib
+CPPLIBS= -L/usr/local/lib/ -lopencv_core -lopencv_flann -lopencv_video -lopencv_highgui -lopencv_ccalib -lpthread
 
 HFILES= 
 CFILES= 

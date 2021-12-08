@@ -1,3 +1,14 @@
+#include <stdio.h>
+#include <cmath>
+#include <iostream>
+#include <unistd.h>
+#include <fstream>
+#include <pthread.h>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -5,20 +16,14 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <stdio.h>
-#include <iostream>
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/videoio.hpp"
-#include <unistd.h>
-#include <fstream>
-
 
 #include <opencv2/cudaobjdetect.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/core/cuda.hpp>
-
 
 using namespace std;
 using namespace cv;
@@ -29,27 +34,40 @@ using namespace cv;
 #define DISPARITY 0
 #define OBJECT_DETECTION 1
 #define OB_DEPTH 1
- 
-#define LIVE_FEED_OTHER 0
-#define DISPARITY_OTHER 0
+#define MONITOR_AND_EXPORT 1
+#define PI 3.14159265 
 
 
 Ptr<cuda::CascadeClassifier> body_cascade;
 cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
 void detectAndDisplay( Mat frame );
 
-void create_shared_results_file();
-std::vector<int> violations(24,0);
+//std::vector<int> violations(24,0);
+std::vector<int> violations(60,0);
+
+int hour = 0;
+int minute = 0;
+bool report = true;
+int violation_count = 0;
+pthread_mutex_t export_l = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t violation_l = PTHREAD_MUTEX_INITIALIZER;
+
+void export_violations();
+void *monitor_and_export(void *);
+void *violation_per_sec(void* );
+std::string return_time(string str);
 
 int main(){
 
+  //hour = stoi(return_time("H"));
+  //monitor_and_export(NULL);
   cv::Mat distortCoeff1 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients1.yaml", "distortionCoefficients1");
   cv::Mat distortCoeff2 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients2.yaml", "distortionCoefficients2");
   cv::Mat intrinsicMat1= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix1.yaml", "intrinsicMatrix1");
   cv::Mat intrinsicMat2= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix2.yaml", "intrinsicMatrix2");
   cv::Mat rot_cam2 = LoadDatafromymlfile("stereo_calib_parameters/rotationOfCamera2.yaml", "rotationOfCamera2");
   cv::Mat translation_cam2 = LoadDatafromymlfile("stereo_calib_parameters/translationOfCamera2.yaml", "translationOfCamera2");
-  create_shared_results_file();
+  export_violations();
 #if MINE
   
 #if OBJECT_DETECTION
@@ -137,10 +155,13 @@ int main(){
             0);
 
 
+
   //cv::imshow("Left image after rectification",Left_nice);
   //cv::imshow("Right image after rectification",Right_nice);
-  cv::waitKey(0);
 
+  cerr << proj_mat_l << endl;
+  cerr << proj_mat_r << endl;
+  cerr << intrinsicMat1 << endl;
 #if LIVE_FEED
 
   //cv::Mat Left_nice, Right_nice;
@@ -222,6 +243,14 @@ int main(){
   //--- GRAB AND WRITE LOOP
   cout << "Start grabbing" << endl<< "Press any key to terminate" << endl;
 
+#if MONITOR_AND_EXPORT
+  
+  pthread_t mon_time;
+  pthread_t record_violation;
+  minute = stoi(return_time("S"));
+  pthread_create(&mon_time, NULL, monitor_and_export, NULL );
+
+#endif
   for (;;)
   {
     // wait for a new frame from camera and store it into 'frame'
@@ -284,24 +313,16 @@ int main(){
     //double B = abs(proj_mat_r.at<double>(0,3));
     double disp2 = ((proj_mat_l.at<double>(0,2)) + proj_mat_r.at<double>(0,2));
  
+    //parallel vectors of information per detected object
+    vector<double> distances; 
+    vector<double> horizontal_dist; 
 
 
-    for ( size_t i = 0; i < left_faces.size(); i++ )
+
+    for ( size_t i = 0; i < left_faces.size(); i++ ) // process every detection found in left frame
     {
-      Point center( left_faces[i].x + left_faces[i].width/2, left_faces[i].y + left_faces[i].height/2 );
-      //Point zero( left_faces[i].x+ left_faces[i].width /2, left_faces[i].y );
       Point zero( left_faces[i].x, left_faces[i].y );
       Point max( left_faces[i].x + left_faces[i].width, left_faces[i].y + left_faces[i].height );
-
-      //cerr << left_faces[i].x+left_faces[i].width/2 << "     " << right_faces[i].x+ right_faces[i].width/2 << endl;
-      //cerr << proj_mat_l.at<float>(0,0) << endl;
-
-      //Point center_top( left_faces[i].x/left_faces[i].width/2, left_faces[i].y);
-      //circle(Left_nice, center_top, 2, Scalar( 255, 0, 255 ), 7 );
-
-
-      //ellipse(Left_nice, center, Size( left_faces[i].width/2, left_faces[i].height/2 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4 );
-      //rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
 
       rectangle(Left_nice, zero, max, Scalar( 255, 128, 0 ) ,2);
 
@@ -312,24 +333,98 @@ int main(){
         rectangle(Right_nice, zeroR, maxR, Scalar( 255, 128, 0 ) ,2);
 
         double disp = (left_faces[i].x+left_faces[i].width/2)-(right_faces[i].x+ right_faces[i].width/2);
-        double depth = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
-        string depth_str = "Distance: " + to_string(depth);
+        // Issue is the further back the disparity is too small - if(disp == 0) {disp =;} //
+        double distance = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
+        string distance_str = "Distance: " + to_string(fabs(distance));
+        distances.push_back(distance); // could make data type a tuple of other needed values
 
-        cerr << "DEPTH: " << abs(depth) <<endl;
-        //sleep(.2);
+
+        /*cerr << "\t\tDISTANCE: " << fabs(distance) <<endl;
+        cerr << disp << endl;
+        cerr << "\t\tx(pixel): " << left_faces[i].x+left_faces[i].width/2 << endl;
+        cerr << "\t\tfocal len: " << focal_length << "   m: " << (sqrt((320*320)+(240*240))) << "      " << focal_length * (sqrt((320*320)+(240*240))) << endl;
+        cerr << "x CORD: " << ((distance * (left_faces[i].x+left_faces[i].width/2)) / (focal_length * (sqrt((320*320)+(240*240))))) << endl;
+        */
+        double xx = left_faces[i].x+left_faces[i].width/2;
+        double cx = 160.843452453613;
+        //double cx = 165.52037;
+        //double cx = 143.367923736572;
+        double z = fabs(distance);
+        double f_length = focal_length * (sqrt((320*320)+(240*240)));
+        //double f_length = focal_length ;
+        double x_REAL = z * (cx-xx) /f_length;
+        
+
+        //cerr << x_REAL/10 << endl;
+        horizontal_dist.push_back(x_REAL/10);
+      }
+    }
+  
+    int violation_count = 0;
+
+    for(int i = 0; i < (int)distances.size(); ++i){
+      double theta_base;
+      double base_hypo = distances[i];
+      double base_x = horizontal_dist[i];
+
+
+
+      //double c_squared = pow(distances[i], 2);
+      //double a_squared = pow(horizontal_dist[i], 2);
+      //double y_base = sqrt(c_squared - a_squared);
+      
+      try{
+        theta_base = acos(base_x/base_hypo) * 180.0 / PI;
+      }
+      catch(...){
+        theta_base = 361;
       }
 
+      for(int j = i+1; j < (int)left_faces.size(); ++j){
+        //let i left_faces[i] = box 1 to all other boxes - let j = others
+        //calc distance between each objects on screen
+
+        double theta_other;
+        double other_hypo = distances[j];
+        double other_x = horizontal_dist[j];
+        try{
+            theta_other= acos(other_x/other_hypo) * 180.0 / PI;
+        }
+        catch(...){
+          theta_base = 361;
+        }
+
+        if(theta_base != 361 || theta_other != 361){
+          double inner_theta = 180 - theta_base - theta_other;
+          double distance_between = sqrt(pow(base_hypo, 2) + pow(other_hypo, 2) - (2*base_hypo*other_hypo*cos(inner_theta)));
+
+          cerr << "BETWEEN:  "<<distance_between << endl;
+          //if(distance_between < ){
+            //++violation_count;
+          //}
+
+
+        }
+
+        //could draw line between boxes too
+      }
     }
+    violation_count = 1;
+
+    if(report){ 
+      report = false;
+      pthread_create(&record_violation, NULL, violation_per_sec, (void*)violation_count);
+    }
+
 
 #endif
 
-    imshow("Camera 1",Left_nice);
-    imshow("Camera 2", Right_nice);
-    if (waitKey(5) >= 0)
+    imshow("Left Camera",Left_nice);
+    imshow("Right Camera", Right_nice);
+    if (waitKey(5) >= 0){
       break;
+    }
   }
-
-
 
 #endif
 #endif
@@ -346,25 +441,118 @@ cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring
 }
 
 
-void create_shared_results_file(){
+void export_violations(){
 
   std::ofstream file("violations.csv", std::ios::trunc);
   
   //for(auto i = new_set_violations.begin(); i != new_set_violations.end(); ++i){
   for(int i = 0; i < (int)violations.size(); ++i){
-    int begin_hr = i;
-    int end_hr = i+1;
-    if(i == 23){
-      end_hr = 0;
+    int begin = i;
+    int end = i+1;
+    if(end == 60){
+      end = 0;
     }
-    file << i << ", " << i+1 << ", " << violations[i] << std::endl;
+    file << begin << ", " << end << ", " << violations[i] << std::endl;
 
   }
 
   file.close();
 }
 
+void *monitor_and_export(void* empt){
+  
+  string str;
+  size_t pos;
+  time_t rawtime;
+
+  while(1){
+
+    int cur = stoi(return_time("S"));
+    int prev = minute; 
+    
+    if(cur != prev){
+      minute = cur;
+    }
+    
+    //cout << return_time("S") << endl;
+    if(minute == 59){//update per minute
+
+      pthread_mutex_lock(&export_l);
+      cerr << "EXPORT\n";
+      export_violations();
+      pthread_mutex_unlock(&export_l);
+      sleep(1);
+    }
+    if(stoi(return_time("H")) != hour){ //reset on hour
+      pthread_mutex_lock(&violation_l);
+      violations.clear();
+      violations.resize(60, 0);
+      pthread_mutex_unlock(&violation_l);
+    }
+
+  }
+
+
+
+}
+// https://stackoverflow.com/questions/24686846/get-current-time-in-milliseconds-or-hhmmssmmm-format
+
+std::string return_time(string hr)
+{
+    using namespace std::chrono;
+
+    // get current time
+    auto now = system_clock::now();
+
+    // get number of milliseconds for the current second
+    // (remainder after division into seconds)
+    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    // convert to std::time_t in order to convert to std::tm (broken time)
+    auto timer = system_clock::to_time_t(now);
+
+    // convert to broken time
+    std::tm bt = *std::localtime(&timer);
+
+    std::ostringstream oss;
+
+    if(hr == "H"){
+      oss << std::put_time(&bt, "%H"); // HH:MM:SS
+
+    }else if(hr == "M"){
+      oss << std::put_time(&bt, "%M"); // HH:MM:SS
+    }else if(hr == "S"){
+      oss << std::put_time(&bt, "%S"); // HH:MM:SS
+
+    }else{
+
+      oss << std::put_time(&bt, "%H:%M::%S"); // HH:MM:SS
+    }
+
+    return oss.str();
+}
+
+void *violation_per_sec(void* violation_count){
+    
+  pthread_mutex_lock(&export_l);
+  cerr << minute << endl;
+
+  if(violations[minute] != 0){
+    violations[minute] = 0;  
+  }
+  violations[minute] += 0;  
+
+  pthread_mutex_unlock(&export_l);
+  sleep(1);
+
+  report = true;
+}
+
+
+
+
 /** @function detectAndDisplay */
+
 
 /*
 void detectAndDisplay( Mat frame )

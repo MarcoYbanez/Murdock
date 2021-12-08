@@ -1,12 +1,21 @@
 # Python tkinter hello world program
   
-import schedule
 import time
 from tkinter import *
 import threading
 import schedule
 import time
 
+violations = {}
+for i in range(60):
+    beg = i
+    end = i+1
+    if(end == 60):
+        end = 0
+    key = (str(beg) + ',' + str(end))
+    violations[key] = 0
+    
+'''
 violations = {
         '0,1' : 0,
         '1,2' : 0,
@@ -33,7 +42,7 @@ violations = {
         '22,23' : 0,
         '23,0' : 0
         }
-
+'''
 
 
 def read_in():
@@ -52,8 +61,8 @@ def sort_violations():
     #for key, value in violations.items():
         #print(key, value)
     violations = dict(res)
-    for key, value in violations.items():
-        print(key, value)
+    #for key, value in violations.items():
+        #print(key, value)
 
 def update_violations():
     read_in()
@@ -79,11 +88,11 @@ class gui_class(Frame):
         self.violation5 = StringVar()
 
         #self.label1 = Label(self.parent, textvariable=self.violation1, bg="red", width=100, height=40)
-        self.label1 = Label(self.parent, textvariable=self.violation1 , bg="red", height= 4, width=600, relief=GROOVE, font="verdana 19")
-        self.label2 = Label(self.parent, textvariable=self.violation2 , bg="red", height= 4, width=600, relief=GROOVE, font="verdana 19")
-        self.label3 = Label(self.parent, textvariable=self.violation3 , bg="red", height= 4, width=600, relief=GROOVE, font="verdana 19")
-        self.label4 = Label(self.parent, textvariable=self.violation4 , bg="red", height= 4, width=600, relief=GROOVE, font="verdana 19")
-        self.label5 = Label(self.parent, textvariable=self.violation5 , bg="red", height= 4, width=600, relief=GROOVE, font="verdana 19")
+        self.label1 = Label(self.parent, textvariable=self.violation1 , bg="green", height= 4, width=600, relief=GROOVE, font="verdana 19")
+        self.label2 = Label(self.parent, textvariable=self.violation2 , bg="green", height= 4, width=600, relief=GROOVE, font="verdana 19")
+        self.label3 = Label(self.parent, textvariable=self.violation3 , bg="green", height= 4, width=600, relief=GROOVE, font="verdana 19")
+        self.label4 = Label(self.parent, textvariable=self.violation4 , bg="green", height= 4, width=600, relief=GROOVE, font="verdana 19")
+        self.label5 = Label(self.parent, textvariable=self.violation5 , bg="green", height= 4, width=600, relief=GROOVE, font="verdana 19")
         
         self.violation1.set("No Entry")
         self.violation2.set("No Entry")
@@ -97,8 +106,18 @@ class gui_class(Frame):
         self.label4.pack() 
         self.label5.pack() 
 
-        print("reached")
+        #print("reached")
         #self.update_top_violations()
+
+    def set_type(self, count, label):
+        if(count > 10):
+            label.config(bg="red")
+
+        elif(count > 5):
+            label.config(bg="yellow")
+            
+        else:
+            label.config(bg="green")
 
     def update_top_violations(self):
         update_violations()
@@ -111,6 +130,12 @@ class gui_class(Frame):
         self.violation4.set(self.output_time_str(results[3]))
         self.violation5.set(self.output_time_str(results[4]))
 
+        self.set_type(results[0][1], self.label1)
+        self.set_type(results[1][1], self.label2)
+        self.set_type(results[2][1], self.label3)
+        self.set_type(results[3][1], self.label4)
+        self.set_type(results[4][1], self.label5)
+
         self.label1.pack() 
         self.label2.pack() 
         self.label3.pack() 
@@ -119,13 +144,19 @@ class gui_class(Frame):
         self.parent.update()
 
     def output_time_str(self, time_and_vio):
-        time = self.split_time(time_and_vio[0]) # results = [hr, hr]
+        time = self.split_timeMin(time_and_vio[0]) # results = [hr, hr]
 
         vio_count = str(time_and_vio[1])
 
-        return time[0] + " - " + time[1] + "      violations: " + vio_count 
+        #return time[0] + " - " + time[1] + "      violations: " + vio_count 
+        return "Min: " + time[0] + " - " + time[1] + "      violations: " + vio_count 
     
-    def split_time(self, hour):
+    def split_timeMin(self, time):
+        res_min = time.split(",")
+        return res_min
+
+
+    def split_timeHR(self, hour):
         res_hour = hour.split(",")
         if(res_hour[0] == "0"):
             res_hour[0] = "12 am"
@@ -187,7 +218,7 @@ class gui_class(Frame):
         return res_hour
 
 def auto_update(gui):
-    print("UPDATE")
+    #print("UPDATE")
     schedule.every().minute.at(":10").do(gui.update_top_violations)
     while True:
         schedule.run_pending()
