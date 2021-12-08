@@ -61,12 +61,12 @@ int main(){
 
   //hour = stoi(return_time("H"));
   //monitor_and_export(NULL);
-  cv::Mat distortCoeff1 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients1.yaml", "distortionCoefficients1");
-  cv::Mat distortCoeff2 = LoadDatafromymlfile("stereo_calib_parameters/distortionCoefficients2.yaml", "distortionCoefficients2");
-  cv::Mat intrinsicMat1= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix1.yaml", "intrinsicMatrix1");
-  cv::Mat intrinsicMat2= LoadDatafromymlfile("stereo_calib_parameters/intrinsicMatrix2.yaml", "intrinsicMatrix2");
-  cv::Mat rot_cam2 = LoadDatafromymlfile("stereo_calib_parameters/rotationOfCamera2.yaml", "rotationOfCamera2");
-  cv::Mat translation_cam2 = LoadDatafromymlfile("stereo_calib_parameters/translationOfCamera2.yaml", "translationOfCamera2");
+  cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients1");
+  cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients2");
+  cv::Mat intrinsicMat1= LoadDatafromymlfile("parameters_v3/parameters.yaml", "intrinsicMatrix1");
+  cv::Mat intrinsicMat2= LoadDatafromymlfile("parameters_v3/parameters.yaml", "intrinsicMatrix2");
+  cv::Mat rot_cam2 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "rotationOfCamera2");
+  cv::Mat translation_cam2 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "translationOfCamera2");
   export_violations();
 #if MINE
   
@@ -74,8 +74,9 @@ int main(){
 
   cuda::GpuMat left_frame_gpu, left_gray_gpu, left_facesBuf_gpu;
   cuda::GpuMat right_frame_gpu, right_gray_gpu, right_facesBuf_gpu;
+  body_cascade = cuda::CascadeClassifier::create("./haarcascade_lowerbody.xml");
   //body_cascade = cuda::CascadeClassifier::create("./haarcascade_fullbody.xml");
-  body_cascade = cuda::CascadeClassifier::create("./haarcascade_frontalface_alt.xml");
+  //body_cascade = cuda::CascadeClassifier::create("./haarcascade_frontalface_alt.xml");
   if(body_cascade->empty()){
     cerr << "DID NOT LOAD\n";
   }
@@ -308,8 +309,8 @@ int main(){
     //cout << left_faces << endl;
   
     double focal_length = proj_mat_l.at<double>(0,0) * (double)3.58 / 320;
-    focal_length = focal_length / 10;
-    double B = 0.06985; //2.75 in to mm
+    focal_length = focal_length/10;
+    double B = 0.254; // in to m
     //double B = abs(proj_mat_r.at<double>(0,3));
     double disp2 = ((proj_mat_l.at<double>(0,2)) + proj_mat_r.at<double>(0,2));
  
@@ -339,8 +340,8 @@ int main(){
         distances.push_back(distance); // could make data type a tuple of other needed values
 
 
-        /*cerr << "\t\tDISTANCE: " << fabs(distance) <<endl;
-        cerr << disp << endl;
+        cerr << "\t\tDISTANCE: " << fabs(distance) <<endl;
+        /*cerr << disp << endl;
         cerr << "\t\tx(pixel): " << left_faces[i].x+left_faces[i].width/2 << endl;
         cerr << "\t\tfocal len: " << focal_length << "   m: " << (sqrt((320*320)+(240*240))) << "      " << focal_length * (sqrt((320*320)+(240*240))) << endl;
         cerr << "x CORD: " << ((distance * (left_faces[i].x+left_faces[i].width/2)) / (focal_length * (sqrt((320*320)+(240*240))))) << endl;
@@ -535,7 +536,6 @@ std::string return_time(string hr)
 void *violation_per_sec(void* violation_count){
     
   pthread_mutex_lock(&export_l);
-  cerr << minute << endl;
 
   if(violations[minute] != 0){
     violations[minute] = 0;  

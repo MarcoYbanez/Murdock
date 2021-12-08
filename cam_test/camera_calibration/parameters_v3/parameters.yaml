@@ -1,0 +1,39 @@
+%YAML:1.0
+    distortionCoefficients1: !!opencv-matrix
+        rows: 1
+        cols: 5
+        dt: f
+        data: [ -0.282441, 0.401114, 0.000000, 
+            0.000000, 0.000000]
+    distortionCoefficients2: !!opencv-matrix
+        rows: 1
+        cols: 5
+        dt: f
+        data: [ 0.046336, 0.327330, 0.000000, 
+            0.000000, 0.000000]
+    intrinsicMatrix1: !!opencv-matrix
+        rows: 3
+        cols: 3
+        dt: f
+        data: [ 402.874071, 0.000000, 222.402590, 
+            0.000000, 402.624807, 116.647021, 0.000000, 
+            0.000000, 1.000000]
+    intrinsicMatrix2: !!opencv-matrix
+        rows: 3
+        cols: 3
+        dt: f
+        data: [ 401.650490, 0.000000, 166.242720, 
+            0.000000, 403.458592, 120.772221, 0.000000, 
+            0.000000, 1.000000]
+    rotationOfCamera2: !!opencv-matrix
+        rows: 3
+        cols: 3
+        dt: f
+        data: [ 0.992628, 0.020838, 0.119399, 
+            -0.020197, 0.999774, -0.006578, -0.119509, 
+            0.004118, 0.992825]
+    translationOfCamera2: !!opencv-matrix
+        rows: 1
+        cols: 3
+        dt: f
+        data: [ 205.649669, -3.673159, 4.388778]
