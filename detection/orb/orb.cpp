@@ -377,8 +377,13 @@ void App::run()
             workBegin();
 
             // Change format of the image
-            if (make_gray) cvtColor(frame, img_aux, COLOR_BGR2GRAY);
-            else if (use_gpu) cvtColor(frame, img_aux, COLOR_BGR2BGRA);
+            if (make_gray){
+              cvtColor(frame, img_aux, COLOR_BGR2GRAY);
+            }
+            else if (use_gpu){
+              cvtColor(frame, img_aux, COLOR_BGR2BGRA);
+              
+            }
             else frame.copyTo(img_aux);
 
             // Resize image
@@ -392,13 +397,15 @@ void App::run()
             hogWorkBegin();
             if (use_gpu)
             {
-                gpu_img.upload(img);
+                gpu_img.upload(img_aux);
+
                 gpu_hog->setNumLevels(nlevels);
                 gpu_hog->setHitThreshold(hit_threshold);
                 gpu_hog->setWinStride(win_stride);
                 gpu_hog->setScaleFactor(scale);
                 gpu_hog->setGroupThreshold(gr_threshold);
                 gpu_hog->detectMultiScale(gpu_img, found);
+                gpu_hog->setGammaCorrection(0);
             }
             else
             {
@@ -412,11 +419,11 @@ void App::run()
             for (size_t i = 0; i < found.size(); i++)
             {
                 Rect r = found[i];
-                rectangle(img_to_show, r.tl(), r.br(), Scalar(255, 128, 0), 3);
+                rectangle(img_to_show, r.tl(), r.br(), Scalar(255, 255, 255), 3);
             }
 
             if (use_gpu)
-                putText(img_to_show, "Mode: GPU", Point(5, 25), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(255, 100, 0), 2);
+                putText(img_to_show, "Mode: GPU", Point(5, 25), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(255, 255, 255), 2);
             else
                 putText(img_to_show, "Mode: CPU", Point(5, 25), FONT_HERSHEY_SIMPLEX, 1., Scalar(255, 100, 0), 2);
             putText(img_to_show, "FPS HOG: " + hogWorkFps(), Point(5, 65), FONT_HERSHEY_SIMPLEX, 1., Scalar(255, 100, 0), 2);

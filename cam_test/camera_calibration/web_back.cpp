@@ -61,7 +61,7 @@ std::string return_time(string str);
 
 int main(){
 
-  //hour = stoi(return_time("H"));
+  hour = stoi(return_time("H"));
   //monitor_and_export(NULL);
   cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients1");
   cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients2");
@@ -293,7 +293,6 @@ int main(){
 
   //detectAndDisplay(Left_nice);
   //detectAndDisplay(Right_nice);
-    Q.convertTo(Q, CV_32F);
     
     left_frame_gpu.upload(Left_nice);
     right_frame_gpu.upload(Right_nice);
@@ -342,7 +341,6 @@ int main(){
         distances.push_back(distance); // could make data type a tuple of other needed values
 
 
-        cerr << "\t\tDISTANCE: " << fabs(distance) <<endl;
         /*cerr << disp << endl;
         cerr << "\t\tx(pixel): " << left_faces[i].x+left_faces[i].width/2 << endl;
         cerr << "\t\tfocal len: " << focal_length << "   m: " << (sqrt((320*320)+(240*240))) << "      " << focal_length * (sqrt((320*320)+(240*240))) << endl;
@@ -397,11 +395,14 @@ int main(){
           theta_base = 361;
         }
 
-        if(theta_base != 361 || theta_other != 361){
+        if((theta_base != 361 || theta_other != 361) && 
+            (stoi( return_time("S")) > 30 || stoi(return_time("S")) < 58 )){
           double inner_theta = 180 - theta_base - theta_other;
           double distance_between = sqrt(pow(base_hypo, 2) + pow(other_hypo, 2) - (2*base_hypo*other_hypo*cos(inner_theta)));
 
-          cerr << "BETWEEN:  "<<distance_between << endl;
+          distance_between /=10;
+          cerr << "\t\tDISTANCE: " << fabs(distances[i])<<  fabs(distances[j]) <<endl;
+          cerr << "BETWEEN:  "<<distance_between*2 << endl;
           //if(distance_between < ){
             //++violation_count;
           //}
@@ -412,11 +413,13 @@ int main(){
         //could draw line between boxes too
       }
     }
-    violation_count = 1;
+    violation_count = 0;
 
     if(report){ 
       report = false;
-      pthread_create(&record_violation, NULL, violation_per_sec, (void*)violation_count);
+      
+      pthread_create(&record_violation, NULL, violation_per_sec, (void*)&violation_count);
+      //pthread_create(&record_violation, NULL, violation_per_sec, (void*)violation_count);
     }
 
 
@@ -456,6 +459,7 @@ void export_violations(){
       end = 0;
     }
     file << begin << ", " << end << ", " << violations[i] << std::endl;
+    cerr << begin << ", " << end << ", " << violations[i] << std::endl;
 
   }
 
@@ -482,6 +486,7 @@ void *monitor_and_export(void* empt){
 
       pthread_mutex_lock(&export_l);
       cerr << "EXPORT\n";
+      //cerr <<
       export_violations();
       pthread_mutex_unlock(&export_l);
       sleep(1);
@@ -542,7 +547,7 @@ void *violation_per_sec(void* violation_count){
   if(violations[minute] != 0){
     violations[minute] = 0;  
   }
-  violations[minute] += 0;  
+  violations[minute] += *((int*)(violation_count));  
 
   pthread_mutex_unlock(&export_l);
   sleep(1);

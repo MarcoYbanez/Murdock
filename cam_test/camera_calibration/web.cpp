@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <sstream>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -16,6 +17,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgproc.hpp>
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/videoio.hpp"
@@ -33,14 +35,14 @@ using namespace cv;
 #define LIVE_FEED 1
 #define DISPARITY 0
 #define OBJECT_DETECTION 1
-#define OB_DEPTH 1
+#define OB_DEPTH 0
 #define MONITOR_AND_EXPORT 1
 #define PI 3.14159265 
 
 
-Ptr<cuda::CascadeClassifier> body_cascade;
+//Ptr<cuda::CascadeClassifier> body_cascade;
+Ptr<cuda::HOG> body_cascade;
 
-//Ptr<cuda::HOG> body_cascade;
 cv::Mat LoadDatafromymlfile(std::string ymlfilename, std::string varriablestring);
 void detectAndDisplay( Mat frame );
 
@@ -59,9 +61,11 @@ void *monitor_and_export(void *);
 void *violation_per_sec(void* );
 std::string return_time(string str);
 
+
+std::string to_string_with_precision(const double a_value, const int n = 6);
 int main(){
 
-  //hour = stoi(return_time("H"));
+  hour = stoi(return_time("H"));
   //monitor_and_export(NULL);
   cv::Mat distortCoeff1 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients1");
   cv::Mat distortCoeff2 = LoadDatafromymlfile("parameters_v3/parameters.yaml", "distortionCoefficients2");
@@ -76,7 +80,23 @@ int main(){
 
   cuda::GpuMat left_frame_gpu, left_gray_gpu, left_facesBuf_gpu;
   cuda::GpuMat right_frame_gpu, right_gray_gpu, right_facesBuf_gpu;
-  body_cascade = cuda::CascadeClassifier::create("./haarcascade_lowerbody.xml");
+  Size win_size(48, 96) ;
+  Size block_size(16, 16);
+  Size block_stride(8,8);
+  Size cell_size(8,8);
+  
+  body_cascade = cuda::HOG::create(
+        win_size,
+        block_size,
+        block_stride,
+        cell_size);
+  body_cascade->setSVMDetector(body_cascade->getDefaultPeopleDetector());
+  body_cascade->setNumLevels(16);
+  body_cascade->setHitThreshold(1.15);
+  //body_cascade->setWinStride(win_stride);
+  body_cascade->setScaleFactor(1.05);
+  //body_cascade->setGroupThreshold(gr_threshold);
+  //body_cascade = cuda::CascadeClassifier::create("./haarcascade_lowerbody.xml");
   //body_cascade = cuda::CascadeClassifier::create("./haarcascade_fullbody.xml");
   //body_cascade = cuda::CascadeClassifier::create("./haarcascade_frontalface_alt.xml");
   if(body_cascade->empty()){
@@ -254,8 +274,8 @@ int main(){
   pthread_create(&mon_time, NULL, monitor_and_export, NULL );
 
 #endif
-  for (;;)
-  {
+  Mat g1, g2;
+  while(1){
     // wait for a new frame from camera and store it into 'frame'
     cap1.read(frame1);
     cap2.read(frame2);
@@ -270,11 +290,11 @@ int main(){
     }
     // show live and wait for a key with timeout long enough to show images
 
-    //cvtColor(frame1, g1, CV_BGR2GRAY);
-    //cvtColor(frame2, g2, CV_BGR2GRAY);
 
+
+    /*
     cv::remap(frame1,
-              Left_nice,
+              g1,
               Left_Stereo_Map1,
               Left_Stereo_Map2,
               cv::INTER_LANCZOS4,
@@ -282,33 +302,35 @@ int main(){
               0);
 
     cv::remap(frame2,
-              Right_nice,
+              g2,
               Right_Stereo_Map1,
               Right_Stereo_Map2,
               cv::INTER_LANCZOS4,
               cv::BORDER_CONSTANT,
               0);
+*/
+    cvtColor(frame1, Left_nice, COLOR_BGR2GRAY);
+    cvtColor(frame2, Right_nice,COLOR_BGR2GRAY);
 
 #if OBJECT_DETECTION
 
-  //detectAndDisplay(Left_nice);
-  //detectAndDisplay(Right_nice);
-    Q.convertTo(Q, CV_32F);
-    
     left_frame_gpu.upload(Left_nice);
     right_frame_gpu.upload(Right_nice);
 
-    cv::cuda::cvtColor(left_frame_gpu, left_gray_gpu, COLOR_BGR2GRAY);
-    cv::cuda::cvtColor(right_frame_gpu, right_gray_gpu, COLOR_BGR2GRAY);
+    //cv::cuda::cvtColor(left_frame_gpu, left_gray_gpu, COLOR_BGR2GRAY);
+    //cv::cuda::cvtColor(right_frame_gpu, right_gray_gpu, COLOR_BGR2GRAY);
 
+/* Haar
     body_cascade->setFindLargestObject(false);
     body_cascade->setScaleFactor(1.2);
     body_cascade->setMinNeighbors(4);
-    body_cascade->detectMultiScale(left_gray_gpu, left_facesBuf_gpu);
-    body_cascade->detectMultiScale(right_gray_gpu, right_facesBuf_gpu);
+    body_cascade->detectMultiScale(left_gray_gpu, left_facesBuf_gpu, NULL);
+    body_cascade->detectMultiScale(right_gray_gpu, right_facesBuf_gpu, NULL);
     body_cascade->convert(left_facesBuf_gpu, left_faces);
     body_cascade->convert(right_facesBuf_gpu, right_faces);
-    //cout << left_faces << endl;
+    */
+    body_cascade->detectMultiScale(left_frame_gpu, left_faces);
+    body_cascade->detectMultiScale(right_frame_gpu, right_faces);
   
     double focal_length = proj_mat_l.at<double>(0,0) * (double)3.58 / 320;
     focal_length = focal_length/10;
@@ -324,6 +346,7 @@ int main(){
 
     for ( size_t i = 0; i < left_faces.size(); i++ ) // process every detection found in left frame
     {
+
       Point zero( left_faces[i].x, left_faces[i].y );
       Point max( left_faces[i].x + left_faces[i].width, left_faces[i].y + left_faces[i].height );
 
@@ -338,11 +361,11 @@ int main(){
         double disp = (left_faces[i].x+left_faces[i].width/2)-(right_faces[i].x+ right_faces[i].width/2);
         // Issue is the further back the disparity is too small - if(disp == 0) {disp =;} //
         double distance = focal_length * (sqrt((320*320)+(240*240)))* B / (disp);
+        distance = fabs(distance);
         string distance_str = "Distance: " + to_string(fabs(distance));
         distances.push_back(distance); // could make data type a tuple of other needed values
 
 
-        cerr << "\t\tDISTANCE: " << fabs(distance) <<endl;
         /*cerr << disp << endl;
         cerr << "\t\tx(pixel): " << left_faces[i].x+left_faces[i].width/2 << endl;
         cerr << "\t\tfocal len: " << focal_length << "   m: " << (sqrt((320*320)+(240*240))) << "      " << focal_length * (sqrt((320*320)+(240*240))) << endl;
@@ -358,8 +381,13 @@ int main(){
         double x_REAL = z * (cx-xx) /f_length;
         
 
-        //cerr << x_REAL/10 << endl;
+        cerr << x_REAL/10 << endl;
         horizontal_dist.push_back(x_REAL/10);
+
+        //cerr << "\t\tDISTANCE: " << (distance) << " ----- " << to_string((float)distance) <<endl;
+        //putText(Left_nice, "Distance: " , Point(left_faces[i].x+2, left_faces[i].y+2), FONT_HERSHEY_SIMPLEX, .4, Scalar(0, 0, 0), 2);
+        putText(Left_nice, (to_string_with_precision(distance, 2) + "m"), Point(left_faces[i].x+2, left_faces[i].y+14), FONT_HERSHEY_SIMPLEX, .4, Scalar(0, 0, 0), 2);
+
       }
     }
   
@@ -400,8 +428,10 @@ int main(){
         if(theta_base != 361 || theta_other != 361){
           double inner_theta = 180 - theta_base - theta_other;
           double distance_between = sqrt(pow(base_hypo, 2) + pow(other_hypo, 2) - (2*base_hypo*other_hypo*cos(inner_theta)));
+          distance_between /=10;
+          distance_between *= 2;
 
-          cerr << "BETWEEN:  "<<distance_between << endl;
+          cerr << "BETWEEN:  "<<distance_between<< endl;
           //if(distance_between < ){
             //++violation_count;
           //}
@@ -416,7 +446,9 @@ int main(){
 
     if(report){ 
       report = false;
-      pthread_create(&record_violation, NULL, violation_per_sec, (void*)violation_count);
+      
+      pthread_create(&record_violation, NULL, violation_per_sec, (void*)&violation_count);
+      //pthread_create(&record_violation, NULL, violation_per_sec, (void*)violation_count);
     }
 
 
@@ -456,6 +488,7 @@ void export_violations(){
       end = 0;
     }
     file << begin << ", " << end << ", " << violations[i] << std::endl;
+    cerr << begin << ", " << end << ", " << violations[i] << std::endl;
 
   }
 
@@ -482,6 +515,7 @@ void *monitor_and_export(void* empt){
 
       pthread_mutex_lock(&export_l);
       cerr << "EXPORT\n";
+      //cerr <<
       export_violations();
       pthread_mutex_unlock(&export_l);
       sleep(1);
@@ -542,7 +576,8 @@ void *violation_per_sec(void* violation_count){
   if(violations[minute] != 0){
     violations[minute] = 0;  
   }
-  violations[minute] += 0;  
+  violations[minute] += *((int*)(violation_count));  
+  //cerr << violations[minute] << endl;
 
   pthread_mutex_unlock(&export_l);
   sleep(1);
@@ -550,6 +585,14 @@ void *violation_per_sec(void* violation_count){
   report = true;
 }
 
+// https://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
+std::string to_string_with_precision(const double a_value, const int n)
+{
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value;
+    return out.str();
+}
 
 
 

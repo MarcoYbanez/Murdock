@@ -12,7 +12,7 @@ CFILES=
 
 SRCS= ${HFILES} ${CFILES}
 
-all: web
+all: web web_back
 
 clean:
 	-rm -f *.o *.d
@@ -22,6 +22,9 @@ distclean:
 	-rm -f *.o *.d
 
 web: web.o
+	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)
+
+web_back: web_back.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -o $@ $@.o `pkg-config --libs opencv4` $(CPPLIBS)
 
 depend:
