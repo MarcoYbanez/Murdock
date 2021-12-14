@@ -379,6 +379,7 @@ int main(){
         x_REAL += (B/2);
         
 
+        cerr << x_REAL/10 << endl;
         horizontal_dist.push_back(x_REAL/10);
 
         //cerr << "\t\tDISTANCE: " << (distance) << " ----- " << to_string((float)distance) <<endl;
@@ -439,6 +440,7 @@ int main(){
           Point midpoint((base_center.x + other_center.x)/2, (base_center.y + other_center.y)/2);
           putText(Left_nice, (to_string_with_precision(distance_between, 2) + "m"), midpoint, FONT_HERSHEY_SIMPLEX, .4, Scalar(0, 0, 0), 2);
 
+          cerr << "BETWEEN:  "<<distance_between<< endl;
           if(distance_between < 1.005){
 
             ++violation_count;
@@ -498,6 +500,7 @@ void export_violations(){
       end = 0;
     }
     file << begin << ", " << end << ", " << violations[i] << std::endl;
+    cerr << begin << ", " << end << ", " << violations[i] << std::endl;
 
   }
 
@@ -520,6 +523,7 @@ void *monitor_and_export(void* empt){
 
       pthread_mutex_lock(&export_l);
       minute = cur;
+      cerr << "EXPORT\n";
       //cerr <<
       export_violations();
       pthread_mutex_unlock(&export_l);
