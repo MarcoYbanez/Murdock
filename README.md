@@ -12,6 +12,10 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
   - CUDA 10.0
   - Jetpack 4.2.1
 
+## How
+  The main issue is determining the distance of a target from a camera. Depth cannot be accurately determined with a 2D picture frame. However, if another camera is introduced and the same target is identified in the second frame we could determine depth by triangulation and epipolar geometry just like how the human eyes determine distances of objects from ourselves.
+  
+
 ## Use
 
   cd Final\
