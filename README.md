@@ -28,5 +28,9 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
   assistantance 
   
   ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Photos/Murdock_demo.png?raw=true)
-  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Photos/temp.jpg?raw=true)
+  
+  <br>
+
+  Camera setup
+  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Photos/system.jpg?raw=true)
 
