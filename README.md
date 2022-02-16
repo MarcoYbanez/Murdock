@@ -4,19 +4,26 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
 
 
 ### Hardware 
+---
   2x C270 Logitech Cameras\
   Nvidia Jetson Nano 2gb\
 
 ### Software
-  OpenCV 4.5.0\
-  Jetpack\
+---
+  - OpenCV 4.5.0\
+  - CUDA 10.0\
+  - Jetpack 4.2.1
+
 
 ### Use
+
+---  
+
   cd Final\
-  ./run.sh\
+  ./run.sh
 
   Notes:
-  Here is a photo of  my roommate and I running a test. This configuration read violations per sec, and reported by the minute for demonstration purposes.
-  The left camera\
+  Here is a photo of my roommate and I running a test. This configuration read violations per sec, and reported by the minute for demonstration purposes.
+  The primary camera is the left \
   ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Murdock_demo.png?raw=true)
 
