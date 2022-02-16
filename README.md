@@ -14,7 +14,7 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
 
 ## How
   The main issue is determining the distance of a target from a camera. Depth cannot be accurately determined with a 2D picture frame. However, if another camera is introduced and the same target is identified in the second frame we could determine depth by triangulation and epipolar geometry just like how the human eyes determine distances of objects from ourselves.\
-  Once the distance from the cameras to N number of objects are determined, distances between each of the objects can be determined using the law of cosine.
+  Once the distance from the cameras to N number of objects are found, distances between each of the objects was determined using the law of cosine.
   
 
 ## Use
