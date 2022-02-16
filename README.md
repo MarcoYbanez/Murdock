@@ -19,7 +19,8 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
 
   Notes:
   Here is a photo of my roommate and I running a test. This configuration read violations per sec, and reported by the minute for demonstration purposes.
-  The primary camera is the left\
+  Mimicing human eyes, the left camera is the primary/dominant camera that displays important information while the right camera is used for triangulation 
+  assistantance 
   
   ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Murdock_demo.png?raw=true)
 
