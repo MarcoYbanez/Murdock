@@ -23,15 +23,15 @@ Murdock is a social distance high traffic monitoring system. It monitors a given
   ./run.sh
 
   Notes:
-  Here is a photo of my roommate and I running a test. This configuration read violations per sec, and reported by the minute for demonstration purposes.
-  Mimicing human eyes, the left camera is the primary/dominant camera that displays important information while the right camera is used for triangulation 
+  I've included an MP4 video in the Multimedia folder, but here is a screenshot of my roommate and I running a test. This configuration read violations per sec and reports were of ciolations were per minute for demonstration purposes.
+  The left camera is the primary/dominant camera that displays important information while the right camera is used for triangulation 
   assistantance 
   
-  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Photos/Murdock_demo.png?raw=true)
+  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Multimedia/Murdock_demo.png?raw=true)
   
   <br>
 
   Camera Configuration
 
-  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Photos/system.jpg?raw=true)
+  ![alt text](https://github.com/MarcoYbanez/Murdock/blob/main/Multimedia/system.jpg?raw=true)
 
